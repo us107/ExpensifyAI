@@ -18,7 +18,7 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [showProfile, setShowProfile] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
-  const [selectedForReceiptPrint, setSelectedForReceiptPrint] = useState<ExpenseItem | null>(null);
+  const [editingManualItem, setEditingManualItem] = useState<ExpenseItem | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -38,22 +38,39 @@ const App: React.FC = () => {
   };
 
   const handleManualSave = (partialItem: Partial<ExpenseItem>) => {
-    const newItem: ExpenseItem = {
-      id: Math.random().toString(36).substr(2, 9),
-      userId: user!.id,
-      status: 'completed',
-      convertedAmount: partialItem.amount,
-      baseCurrencyAtTime: user!.baseCurrency,
-      ...partialItem as any
-    };
-    
-    if (newItem.currency !== user?.baseCurrency) {
-        convertCurrency(newItem.amount, newItem.currency, user!.baseCurrency, newItem.date).then(converted => {
-            updateExpense(newItem.id, { convertedAmount: converted });
+    if (partialItem.id) {
+      // It's an update
+      const updated = expenses.map(e => e.id === partialItem.id ? { ...e, ...partialItem } : e);
+      
+      // Re-trigger currency conversion if currency changed
+      const original = expenses.find(e => e.id === partialItem.id);
+      if (original && partialItem.currency !== original.currency && partialItem.amount) {
+        convertCurrency(partialItem.amount, partialItem.currency!, user!.baseCurrency, partialItem.date!).then(converted => {
+          updateExpense(partialItem.id!, { convertedAmount: converted });
         });
-    }
+      }
+      
+      saveExpenses(updated as ExpenseItem[]);
+      setEditingManualItem(null);
+    } else {
+      // It's a new item
+      const newItem: ExpenseItem = {
+        id: Math.random().toString(36).substr(2, 9),
+        userId: user!.id,
+        status: 'completed',
+        convertedAmount: partialItem.amount,
+        baseCurrencyAtTime: user!.baseCurrency,
+        ...partialItem as any
+      };
+      
+      if (newItem.currency !== user?.baseCurrency) {
+          convertCurrency(newItem.amount, newItem.currency, user!.baseCurrency, newItem.date).then(converted => {
+              updateExpense(newItem.id, { convertedAmount: converted });
+          });
+      }
 
-    saveExpenses([newItem, ...expenses]);
+      saveExpenses([newItem, ...expenses]);
+    }
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,6 +125,14 @@ const App: React.FC = () => {
   const updateExpense = async (id: string, updates: Partial<ExpenseItem>) => {
     let newConvertedAmount = updates.convertedAmount;
     const targetExpense = expenses.find(e => e.id === id);
+    
+    // If it's manual, we probably open the modal instead, but we keep this for scanned bills
+    if (targetExpense?.isManual) {
+      setEditingManualItem(targetExpense);
+      setShowManualModal(true);
+      return;
+    }
+
     if (updates.currency && updates.currency !== targetExpense?.currency && targetExpense && user) {
       newConvertedAmount = await convertCurrency(targetExpense.amount, updates.currency, user.baseCurrency, targetExpense.date);
     }
@@ -122,6 +147,16 @@ const App: React.FC = () => {
   const downloadExcelBill = (expense: ExpenseItem) => {
     const filename = `ExcelBill_${expense.manualMetadata?.billNo || expense.id}.xls`;
     
+    // Calculate values based on saved custom rates
+    const itemsTotal = expense.items?.reduce((s, i) => s + (i.qty * i.price), 0) || 0;
+    const scRate = expense.manualMetadata?.serviceChargeRate || 0;
+    const cgstRate = expense.manualMetadata?.cgstRate || 0;
+    const sgstRate = expense.manualMetadata?.sgstRate || 0;
+    
+    const scAmt = itemsTotal * (scRate / 100);
+    const cgstAmt = itemsTotal * (cgstRate / 100);
+    const sgstAmt = itemsTotal * (sgstRate / 100);
+
     const html = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
       <head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Bill</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>
@@ -129,17 +164,13 @@ const App: React.FC = () => {
         <table border="1" style="font-family: 'Courier New', Courier, monospace; font-size: 10pt; width: 400px; border-collapse: collapse;">
           <tr><td colspan="4" align="center" style="font-weight: bold; font-size: 14pt; border:none;">${expense.vendor.split('-')[0].trim()}</td></tr>
           <tr><td colspan="4" align="center" style="font-size: 8pt; border:none;">${expense.manualMetadata?.address}</td></tr>
-          <tr><td colspan="4" align="center" style="font-size: 8pt; border:none;">Bengaluru - 560 011</td></tr>
           <tr><td colspan="4" align="center" style="font-size: 8pt; border:none;">Ph: ${expense.manualMetadata?.phone}</td></tr>
-          <tr><td colspan="4" align="center" style="font-size: 8pt; italic; border:none;">${expense.manualMetadata?.website}</td></tr>
+          <tr><td colspan="4" align="center" style="font-size: 8pt; italic; border:none;">${expense.manualMetadata?.website || ''}</td></tr>
           <tr><td colspan="4" align="center" style="border-top: 1px dashed black; border-bottom: 1px dashed black;">&nbsp;</td></tr>
           <tr><td colspan="4" align="center" style="font-weight: bold; border:none;">${expense.vendor.split('-')[1]?.trim() || 'RECEIPT'}</td></tr>
           <tr><td colspan="4" style="border:none;">&nbsp;</td></tr>
           <tr><td colspan="2" style="border:none;">Bill no : ${expense.manualMetadata?.billNo}</td><td colspan="2" align="right" style="border:none;">Table #: 10</td></tr>
           <tr><td colspan="2" style="border:none;">Bill Date : ${expense.date}</td><td colspan="2" align="right" style="border:none;">${expense.manualMetadata?.time}</td></tr>
-          <tr><td colspan="2" style="border:none;">Session : ${expense.manualMetadata?.session}</td><td colspan="2" align="right" style="border:none;">&nbsp;</td></tr>
-          <tr><td colspan="2" style="border:none;">Steward : ${expense.manualMetadata?.steward}</td><td colspan="2" align="right" style="border:none;">&nbsp;</td></tr>
-          <tr><td colspan="2" style="border:none;">Cover : ${expense.manualMetadata?.cover}</td><td colspan="2" align="right" style="border:none;">&nbsp;</td></tr>
           <tr><td colspan="4" align="center" style="border-top: 1px dashed black; border-bottom: 1px dashed black;">&nbsp;</td></tr>
           <tr style="font-weight: bold;">
             <td>Qty</td>
@@ -155,20 +186,18 @@ const App: React.FC = () => {
           `).join('')}
           <tr style="font-weight: bold;">
             <td colspan="3">Sub total</td>
-            <td align="right">${((expense.amount || 0) / 1.1).toFixed(2)}</td>
+            <td align="right">${itemsTotal.toFixed(2)}</td>
           </tr>
-          <tr><td colspan="3">Service Ch 5.00%</td><td align="right">${((expense.amount || 0) * 0.045).toFixed(2)}</td></tr>
-          <tr><td colspan="3">CGST 2.50%</td><td align="right">${((expense.amount || 0) * 0.0225).toFixed(2)}</td></tr>
-          <tr><td colspan="3">SGST 2.50%</td><td align="right">${((expense.amount || 0) * 0.0225).toFixed(2)}</td></tr>
+          ${scRate > 0 ? `<tr><td colspan="3">Service Ch ${scRate.toFixed(2)}%</td><td align="right">${scAmt.toFixed(2)}</td></tr>` : ''}
+          ${cgstRate > 0 ? `<tr><td colspan="3">CGST ${cgstRate.toFixed(2)}%</td><td align="right">${cgstAmt.toFixed(2)}</td></tr>` : ''}
+          ${sgstRate > 0 ? `<tr><td colspan="3">SGST ${sgstRate.toFixed(2)}%</td><td align="right">${sgstAmt.toFixed(2)}</td></tr>` : ''}
           <tr style="font-weight: bold; font-size: 11pt; border-top: 1px solid black;">
             <td colspan="3">Net Amt.</td>
             <td align="right">${expense.amount.toFixed(2)}</td>
           </tr>
           <tr><td colspan="4" style="border:none;">&nbsp;</td></tr>
           <tr><td colspan="4" style="font-weight: bold; border:none;">GSTIN NO : ${expense.manualMetadata?.gstin}</td></tr>
-          <tr><td colspan="4" style="border:none;">Guest Name : ________________</td></tr>
-          <tr><td colspan="4" style="border:none;">Room no : ___________________</td></tr>
-          <tr><td colspan="4" style="italic; border:none;">Guest Signature: _____________</td></tr>
+          <tr><td colspan="4" style="border:none;">&nbsp;</td></tr>
           <tr><td colspan="3" style="border:none;">Cashier : ${expense.manualMetadata?.cashier}</td><td align="right" style="border:none;">&nbsp;</td></tr>
         </table>
       </body>
@@ -184,73 +213,37 @@ const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const ExcelGridBill = ({ expense }: { expense: ExpenseItem }) => (
-    <div className="bg-white text-[10px] leading-tight font-mono text-black border border-slate-300 p-0 shadow-lg select-none" style={{ width: '320px' }}>
-      <div className="flex bg-[#f3f3f3] border-b border-slate-300 text-[#666666] text-center font-normal">
-        <div className="w-[30px] border-r border-slate-300"></div>
-        <div className="w-[80px] border-r border-slate-300">A</div>
-        <div className="w-[130px] border-r border-slate-300">B</div>
-        <div className="w-[80px]">C</div>
-      </div>
-      {[...Array(38)].map((_, rIdx) => {
-        const row = rIdx + 1;
-        return (
-          <div key={row} className="flex border-b border-[#e2e2e2] h-[16px]">
-            <div className="w-[30px] bg-[#f3f3f3] border-r border-slate-300 text-[#666666] text-center flex items-center justify-center text-[8px]">{row}</div>
-            <div className="flex-1 flex px-1 items-center relative overflow-hidden">
-              {row === 1 && <div className="absolute inset-0 flex items-center justify-center font-bold text-[11px] tracking-tight uppercase underline decoration-double">{expense.vendor.split('-')[0].trim()}</div>}
-              {row === 2 && <div className="absolute inset-0 flex items-center justify-center text-[8px]">{expense.manualMetadata?.address}</div>}
-              {row === 3 && <div className="absolute inset-0 flex items-center justify-center text-[8px]">Bengaluru - 560 011</div>}
-              {row === 4 && <div className="absolute inset-0 flex items-center justify-center text-[8px]">Ph: {expense.manualMetadata?.phone}</div>}
-              {row === 5 && <div className="absolute inset-0 flex items-center justify-center text-[8px] italic underline">{expense.manualMetadata?.website}</div>}
-              {row === 7 && <div className="absolute inset-0 flex items-center justify-center font-bold text-[9px] uppercase tracking-[0.2em]">{expense.vendor.split('-')[1]?.trim() || 'SAARANGI'}</div>}
-              {row === 9 && <div>Bill no : {expense.manualMetadata?.billNo} Table #: 10</div>}
-              {row === 10 && <div>Bill Date : {expense.date} {expense.manualMetadata?.time}</div>}
-              {row === 11 && <div>Session : {expense.manualMetadata?.session}</div>}
-              {row === 12 && <div>Steward : {expense.manualMetadata?.steward}</div>}
-              {row === 13 && <div>Cover : {expense.manualMetadata?.cover}</div>}
-              {row === 15 && <div className="w-full flex justify-between font-bold border-t border-b border-black"><span>Qty Item Name</span><span>Amount</span></div>}
-              {row >= 17 && row < 17 + (expense.items?.length || 0) && (
-                <div className="w-full flex justify-between">
-                  <span>{expense.items?.[row-17].qty} {expense.items?.[row-17].name}</span>
-                  <span>{(expense.items?.[row-17].qty || 1) * (expense.items?.[row-17].price || 0)}.00</span>
-                </div>
-              )}
-              {row === 20 && <div className="w-full flex justify-between font-bold"><span>Sub total</span><span>{((expense.amount || 0) / 1.1).toFixed(2)}</span></div>}
-              {row === 21 && <div className="w-full flex justify-between text-slate-500"><span>Service Ch5.00%</span><span>{((expense.amount || 0) * 0.045).toFixed(2)}</span></div>}
-              {row === 22 && <div className="w-full flex justify-between text-slate-500"><span>CGST 2.50%</span><span>{((expense.amount || 0) * 0.0225).toFixed(2)}</span></div>}
-              {row === 23 && <div className="w-full flex justify-between text-slate-500"><span>SGST 2.50%</span><span>{((expense.amount || 0) * 0.0225).toFixed(2)}</span></div>}
-              {row === 24 && <div className="w-full flex justify-between font-bold text-[10px] pt-1 border-t border-black"><span>Net Amt.</span><span>{expense.amount?.toFixed(2)}</span></div>}
-              {row === 31 && <div className="font-bold">GSTIN NO : {expense.manualMetadata?.gstin}</div>}
-              {row === 33 && <div>Guest Name :</div>}
-              {row === 34 && <div>Room no :</div>}
-              {row === 36 && <div className="italic">Guest Signature...........................</div>}
-              {row === 38 && <div className="w-full flex justify-between"><span>Cashier :</span><span>{expense.manualMetadata?.cashier}</span></div>}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-
   if (loading) return null;
   if (!user) return <AuthScreen />;
 
   return (
     <div className="min-h-screen pb-20">
-      <Navbar onOpenProfile={() => setShowProfile(true)} />
+      <Navbar 
+        onOpenProfile={() => setShowProfile(true)} 
+        currentView={viewMode === 'grid' ? 'dashboard' : 'history'}
+        onViewChange={(v) => setViewMode(v === 'dashboard' ? 'grid' : 'table')}
+      />
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
-      {showManualModal && <ManualBillModal onClose={() => setShowManualModal(false)} onSave={handleManualSave} baseCurrency={user.baseCurrency} />}
+      {showManualModal && (
+        <ManualBillModal 
+          onClose={() => { setShowManualModal(false); setEditingManualItem(null); }} 
+          onSave={handleManualSave} 
+          baseCurrency={user.baseCurrency}
+          editingItem={editingManualItem}
+        />
+      )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 no-print">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Expense Hub</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">
+              {viewMode === 'grid' ? 'Expense Hub' : 'Expense History'}
+            </h1>
             <p className="text-slate-500 font-bold text-xs uppercase tracking-widest italic">Digitize receipts or <span className="text-amber-600">Generate Manual Bills</span>.</p>
           </div>
           
           <div className="flex items-center gap-3">
-            <button onClick={() => setShowManualModal(true)} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-amber-100 transition-all active:scale-95">
+            <button onClick={() => { setEditingManualItem(null); setShowManualModal(true); }} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-amber-100 transition-all active:scale-95">
               <i className="fas fa-magic"></i>
               <span>Create Manual Bill</span>
             </button>
@@ -286,7 +279,7 @@ const App: React.FC = () => {
             </div>
             <h3 className="text-xl font-black text-slate-900 mb-2 uppercase tracking-tight">No travel bills yet.</h3>
             <p className="text-slate-500 mb-8 max-w-sm mx-auto font-bold text-xs uppercase tracking-widest leading-relaxed">Scan your physical receipts or generate a manual Excel bill for paperless travel.</p>
-            <button onClick={() => setShowManualModal(true)} className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-8 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl shadow-amber-100">
+            <button onClick={() => { setEditingManualItem(null); setShowManualModal(true); }} className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-8 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl shadow-amber-100">
               <i className="fas fa-magic"></i>
               <span>Create First Bill</span>
             </button>

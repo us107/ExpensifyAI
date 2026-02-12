@@ -43,6 +43,9 @@ export interface ExpenseItem {
     gstin?: string;
     cashier?: string;
     time?: string;
+    serviceChargeRate?: number;
+    cgstRate?: number;
+    sgstRate?: number;
   };
 }
 

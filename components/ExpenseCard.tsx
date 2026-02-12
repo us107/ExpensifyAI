@@ -125,10 +125,15 @@ const ExpenseCard: React.FC<Props> = ({ expense, onDelete, onUpdate }) => {
         <img src={expense.imageUrl} alt="Bill thumbnail" className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-500" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
         <StatusBadge />
-        <div className="absolute top-3 left-3 flex gap-2">
-           <span className="px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest text-white backdrop-blur-md bg-white/20 border border-white/30">
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+           <span className="px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest text-white backdrop-blur-md bg-white/20 border border-white/30 w-fit">
             {expense.date}
           </span>
+          {expense.isManual && (
+            <span className="px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest text-white bg-amber-500/80 border border-amber-400 shadow-sm w-fit flex items-center gap-1">
+              <i className="fas fa-file-invoice text-[8px]"></i> Manual
+            </span>
+          )}
         </div>
         <div className="absolute bottom-3 left-3 text-white flex flex-col">
           <div className="text-xl font-black leading-none">{expense.amount.toFixed(2)} <span className="text-xs font-bold opacity-80">{expense.currency}</span></div>
