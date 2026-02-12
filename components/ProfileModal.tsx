@@ -6,15 +6,20 @@ interface Props {
   onClose: () => void;
 }
 
+const currencies = [
+  "USD", "EUR", "GBP", "JPY", "CAD", "AUD", "INR", "CNY", "CHF", "HKD", "SGD", "SEK", "KRW", "NOK", "NZD", "MXN", "TWD", "ZAR", "BRL", "RUB", "TRY", "IDR", "AED", "SAR", "PLN", "THB", "ILS", "DKK", "PHP", "MYR", "HUF", "COP", "CZK", "EGP", "CLP", "PKR", "BDT", "VND", "LKR", "NGN", "KES", "GHS", "TZS", "UGX", "MAD", "DZD", "PEN", "UAH"
+].sort();
+
 const ProfileModal: React.FC<Props> = ({ onClose }) => {
   const { user, updateProfile } = useAuth();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
+  const [baseCurrency, setBaseCurrency] = useState(user?.baseCurrency || 'INR');
   const [isSuccess, setIsSuccess] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile({ name, email });
+    updateProfile({ name, email, baseCurrency });
     setIsSuccess(true);
     setTimeout(() => setIsSuccess(false), 3000);
   };
@@ -55,6 +60,19 @@ const ProfileModal: React.FC<Props> = ({ onClose }) => {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Reimbursement Currency (Base)</label>
+              <select
+                value={baseCurrency}
+                onChange={(e) => setBaseCurrency(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {currencies.map(curr => (
+                  <option key={curr} value={curr}>{curr}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-400 mt-1">This is the currency your office uses to pay you back (e.g., INR).</p>
             </div>
           </div>
 

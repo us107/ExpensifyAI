@@ -51,3 +51,26 @@ export const extractExpenseFromImage = async (base64Image: string): Promise<Extr
 
   return JSON.parse(response.text.trim()) as ExtractionResult;
 };
+
+export const convertCurrency = async (amount: number, from: string, to: string, date: string): Promise<number> => {
+  if (from === to) return amount;
+  
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `Convert ${amount} ${from} to ${to} based on the approximate exchange rate around ${date}. Return ONLY the numerical result.`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          convertedAmount: { type: Type.NUMBER }
+        },
+        required: ["convertedAmount"]
+      }
+    }
+  });
+
+  const result = JSON.parse(response.text || '{"convertedAmount": 0}');
+  return result.convertedAmount;
+};

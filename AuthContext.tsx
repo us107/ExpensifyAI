@@ -36,7 +36,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name,
       email,
       password,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
+      baseCurrency: 'INR' // Default to INR as requested
     };
 
     users.push(newUser);
@@ -44,7 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Auto login
     const { password: _, ...userSafe } = newUser;
-    setUser(userSafe);
+    setUser(userSafe as User);
     localStorage.setItem('expensify_session', JSON.stringify(userSafe));
   };
 
@@ -57,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const { password: _, ...userSafe } = foundUser;
-    setUser(userSafe);
+    setUser(userSafe as User);
     localStorage.setItem('expensify_session', JSON.stringify(userSafe));
   };
 

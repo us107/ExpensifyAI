@@ -12,11 +12,12 @@ export interface User {
   email: string;
   password?: string;
   avatar?: string;
+  baseCurrency: string; // Target currency for reimbursement
 }
 
 export interface ExpenseItem {
   id: string;
-  userId: string; // Added to associate expenses with specific users
+  userId: string;
   date: string;
   vendor: string;
   amount: number;
@@ -26,6 +27,23 @@ export interface ExpenseItem {
   details: string;
   imageUrl?: string;
   status: 'processing' | 'completed' | 'error';
+  convertedAmount?: number; // The amount in baseCurrency
+  baseCurrencyAtTime?: string; // The base currency used for conversion
+  isManual?: boolean;
+  items?: { qty: number; name: string; price: number }[];
+  manualMetadata?: {
+    address?: string;
+    phone?: string;
+    website?: string;
+    billNo?: string;
+    tableNo?: string;
+    steward?: string;
+    cover?: string;
+    session?: string;
+    gstin?: string;
+    cashier?: string;
+    time?: string;
+  };
 }
 
 export interface ExtractionResult {
