@@ -1,0 +1,7 @@
+{
+  "name": "Expensify AI - Travel Reimbursement Assistant",
+  "description": "An intelligent travel expense manager that automatically extracts details from your receipts, generates reimbursement reports, and exports to Excel.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
