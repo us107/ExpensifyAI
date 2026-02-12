@@ -121,8 +121,15 @@ const ExpenseCard: React.FC<Props> = ({ expense, onDelete, onUpdate }) => {
 
   return (
     <div className={`group rounded-xl border transition-all duration-300 overflow-hidden shadow-sm flex flex-col ${statusColors[expense.status]}`}>
-      <div className="relative h-40 bg-slate-100 overflow-hidden border-b border-slate-100">
-        <img src={expense.imageUrl} alt="Bill thumbnail" className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-500" />
+      <div className="relative h-40 bg-slate-100 overflow-hidden border-b border-slate-100 flex items-center justify-center">
+        {expense.imageUrl ? (
+           <img src={expense.imageUrl} alt="Bill thumbnail" className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-500" />
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-slate-300">
+            <i className="fas fa-file-invoice text-4xl"></i>
+            <span className="text-[10px] font-black uppercase tracking-widest">Manual Entry</span>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
         <StatusBadge />
         <div className="absolute top-3 left-3 flex flex-col gap-1.5">
@@ -130,8 +137,8 @@ const ExpenseCard: React.FC<Props> = ({ expense, onDelete, onUpdate }) => {
             {expense.date}
           </span>
           {expense.isManual && (
-            <span className="px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest text-white bg-amber-500/80 border border-amber-400 shadow-sm w-fit flex items-center gap-1">
-              <i className="fas fa-file-invoice text-[8px]"></i> Manual
+            <span className="px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest text-white bg-indigo-600 border border-indigo-400 shadow-sm w-fit flex items-center gap-1 animate-in slide-in-from-left duration-300">
+              <i className="fas fa-file-invoice text-[8px]"></i> BILL GENERATED
             </span>
           )}
         </div>
@@ -152,8 +159,8 @@ const ExpenseCard: React.FC<Props> = ({ expense, onDelete, onUpdate }) => {
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${categoryIcons[expense.category].split(' ').slice(1).join(' ')}`}>
               <i className={`fas ${categoryIcons[expense.category].split(' ')[0]}`}></i>
             </div>
-            <div>
-              <h4 className="text-sm font-black text-slate-900 leading-tight tracking-tight uppercase">{expense.vendor}</h4>
+            <div className="overflow-hidden">
+              <h4 className="text-sm font-black text-slate-900 leading-tight tracking-tight uppercase truncate">{expense.vendor}</h4>
               <p className="text-[10px] font-bold text-slate-500 flex items-center gap-1 uppercase">
                 <i className="fas fa-map-marker-alt text-[8px]"></i>
                 {expense.location}

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ExpenseCategory, ExpenseItem } from '../types';
 
 interface Props {
@@ -26,7 +26,6 @@ const ManualBillModal: React.FC<Props> = ({ onClose, onSave, baseCurrency, editi
   const [cashier, setCashier] = useState(editingItem?.manualMetadata?.cashier || 'HEMANT');
   const [billNo, setBillNo] = useState(editingItem?.manualMetadata?.billNo || '9022');
   
-  // Tax Rates
   const [serviceChargeRate, setServiceChargeRate] = useState(editingItem?.manualMetadata?.serviceChargeRate ?? 5.0);
   const [cgstRate, setCgstRate] = useState(editingItem?.manualMetadata?.cgstRate ?? 2.5);
   const [sgstRate, setSgstRate] = useState(editingItem?.manualMetadata?.sgstRate ?? 2.5);
@@ -53,7 +52,7 @@ const ManualBillModal: React.FC<Props> = ({ onClose, onSave, baseCurrency, editi
 
   const handleSave = () => {
     onSave({
-      id: editingItem?.id, // App.tsx handles new vs edit based on ID presence
+      id: editingItem?.id, 
       vendor: `${vendor} - ${subVendor}`,
       amount: total,
       currency: currency,
@@ -90,7 +89,7 @@ const ManualBillModal: React.FC<Props> = ({ onClose, onSave, baseCurrency, editi
         
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <h2 className="text-xs font-black text-slate-900 uppercase tracking-widest">
-            {editingItem ? 'Edit Manual Bill' : 'Generate Manual Excel Bill'}
+            {editingItem ? 'Edit Manual Bill' : 'Generate Travel Bill'}
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-red-500 transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50">
             <i className="fas fa-times text-lg"></i>
@@ -227,7 +226,7 @@ const ManualBillModal: React.FC<Props> = ({ onClose, onSave, baseCurrency, editi
           <button onClick={onClose} className="flex-1 bg-white border border-slate-200 text-slate-500 font-black text-[10px] uppercase tracking-widest py-4 rounded-2xl hover:bg-slate-100 transition-all active:scale-95 shadow-sm">Discard</button>
           <button onClick={handleSave} className="flex-1 bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest py-4 rounded-2xl shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 flex items-center justify-center gap-2">
             <i className="fas fa-check-circle text-lg"></i>
-            {editingItem ? 'Update Report' : 'Save to Travel Hub'}
+            {editingItem ? 'Update Bill' : 'Generate Travel Bill'}
           </button>
         </div>
       </div>
