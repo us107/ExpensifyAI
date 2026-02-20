@@ -3,9 +3,6 @@
 
 Expensify AI is a production-ready travel reimbursement hub that combines Vision-AI (Google Gemini) with enterprise-standard reporting tools.
 
-## 🌍 Deployment Ready
-
-This application is built for immediate deployment on platforms like **Vercel**, **Netlify**, or **GitHub Pages**.
 
 ### Environment Setup
 The only requirement is a valid Google Gemini API Key injected as an environment variable:
